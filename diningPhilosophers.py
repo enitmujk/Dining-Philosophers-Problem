@@ -1,41 +1,51 @@
 import threading
 import time
+import random
 
-# Define the Philosopher class
-class Philosopher(threading.Thread):
-    def __init__(self, name, left_chopstick, right_chopstick):
-        threading.Thread.__init__(self)
-        self.name = name
-        self.left_chopstick = left_chopstick
-        self.right_chopstick = right_chopstick
-        self.state = "thinking"
+# Defines the number of philosophers
+N = 4  # Since we are not exceeding 4
 
-    def run(self):
-        if self.name == "Ayn Rand":
-            print(f"\n{self.name} is {self.state}.")
-        elif self.name == "Michel Foucault":
-            # Ensures Michel Foucault is printed immediately after Ayn Rand
-            time.sleep(0.1)
-            print(f"\n{self.name} is {self.state}.")
-        else:
-            print(f"\n{self.name} is {self.state}.")
+# Creates a semaphore for each chopstick
+chopsticks = [threading.Semaphore(1) for _ in range(N)]
 
-# Create the chopsticks (semaphores)
-chopsticks = [threading.Semaphore(1) for _ in range(5)]
+# Creates a binary semaphore (mutex) for mutual exclusion
+mutex = threading.Semaphore(1)
 
-# Create the philosophers
-philosophers = [
-    Philosopher("Friedrich Nietzsche", chopsticks[0], chopsticks[1]),
-    Philosopher("Karl Marx", chopsticks[1], chopsticks[2]),
-    Philosopher("Ayn Rand", chopsticks[2], chopsticks[3]),
-    Philosopher("Jean-Paul Sartre", chopsticks[3], chopsticks[4]),
-    Philosopher("Michel Foucault", chopsticks[4], chopsticks[0])
-]
+# Function for each philosopher to pick up chopsticks, eat, and put them down
+def philosopher(id):
+    left = id
+    right = (id + 1) % N
 
-# Start the philosophers' threads
-for philosopher in philosophers:
-    philosopher.start()
+    while True:
+        # Thinks for a random amount of time
+        print(f"Philosopher {id} is thinking.")
+        time.sleep(random.uniform(1, 5))
 
-# Ensure all threads complete
-for philosopher in philosophers:
-    philosopher.join()
+        # Ensures mutual exclusion when attempting to pick up chopsticks
+        mutex.acquire()
+        
+        # Attempts to acquire the left chopstick
+        acquired_left = chopsticks[left].acquire(blocking=False)
+        if acquired_left:
+            # Attempts to acquire the right chopstick
+            acquired_right = chopsticks[right].acquire(blocking=False)
+            if acquired_right:
+                # Eats for a random amount of time
+                print(f"Philosopher {id} is eating.")
+                time.sleep(random.uniform(1, 5))
+                
+                # Puts down the right chopstick
+                chopsticks[right].release()
+            # Puts down the left chopstick
+            chopsticks[left].release()
+        
+        # Releases the mutex semaphore
+        mutex.release()
+
+        if not (acquired_left and acquired_right):
+            print(f"Philosopher {id} couldn't pick up both chopsticks and is thinking again.")
+
+# Creates and starts philosopher threads
+philosophers = [threading.Thread(target=philosopher, args=(i,)) for i in range(N)]
+for p in philosophers:
+    p.start()
