@@ -1,3 +1,5 @@
+#a solution based on Dijkstra’s approach with some additional modifications to ensure mutual exclusion and prevent deadlocks
+
 import threading
 import time
 import random
@@ -49,3 +51,6 @@ def philosopher(id):
 philosophers = [threading.Thread(target=philosopher, args=(i,)) for i in range(N)]
 for p in philosophers:
     p.start()
+
+# This is a combination of Dijkstra's approach, with the added measure of a mutex semaphore for mutual exclusion
+# and non-blocking acquisition for using chopsticks, it helps to prevent both deadlock and starvation.
